@@ -187,11 +187,12 @@ function filterQuotes() {
   showRandomQuote();
 }
 
-// === Step 9: SERVER SYNC & FETCH ===
+// === Step 9: SERVER SYNC & CONFLICT HANDLING SYSTEM ===
 const SERVER_URL = "https://jsonplaceholder.typicode.com/posts";
+
+// Notification banner
 const syncBanner = document.createElement("div");
-syncBanner.style.cssText =
-  "background:#222;color:#fff;padding:6px;text-align:center;display:none;";
+syncBanner.style.cssText = "background:#222;color:#fff;padding:6px;text-align:center;display:none;";
 document.body.prepend(syncBanner);
 
 function showSyncMessage(msg, color = "lightgreen") {
@@ -208,24 +209,39 @@ async function fetchQuotesFromServer() {
     if (!response.ok) throw new Error("Failed to fetch quotes");
     const data = await response.json();
     console.log("Quotes fetched successfully!");
-    return data;
+    return data.slice(0, 5).map(q => ({
+      text: q.text,
+      category: q.author || "Server"
+    }));
   } catch (err) {
     console.error("Error fetching quotes:", err);
     return [];
   }
 }
 
+// ✅ Combined Sync System (GET + POST + Conflict Resolution)
 async function syncWithServer() {
   try {
     const serverQuotes = await fetchQuotesFromServer();
-    if (!serverQuotes.length) {
-      showSyncMessage("⚠️ No server data fetched", "orange");
-      return;
+
+    // --- POST local quotes to server ---
+    const response = await fetch(SERVER_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ quotes })
+    });
+
+    if (!response.ok) {
+      throw new Error(`POST failed with status ${response.status}`);
     }
 
-    // Prioritize server data
-    const serverTexts = new Set(serverQuotes.map(q => q.text));
+    console.log("Local quotes synced to server successfully!");
+
+    // --- Merge and resolve conflicts (Server takes precedence) ---
     const combined = [...serverQuotes];
+    const serverTexts = new Set(serverQuotes.map(q => q.text));
     quotes.forEach(q => {
       if (!serverTexts.has(q.text)) combined.push(q);
     });
@@ -234,7 +250,7 @@ async function syncWithServer() {
     combined.forEach(q => quotes.push(q));
     saveQuotesToLocalStorage();
     populateCategories();
-    showSyncMessage("✅ Synced with server");
+    showSyncMessage("✅ Synced with server (GET + POST successful)");
   } catch (err) {
     console.error("Sync failed:", err);
     showSyncMessage("⚠️ Sync failed", "red");
@@ -247,4 +263,4 @@ createAddQuoteForm();
 populateCategories();
 showRandomQuote();
 syncWithServer();
-setInterval(syncWithServer, 30000);
+setInterval(syncWithServer, 30000); // sync every 30 seconds
