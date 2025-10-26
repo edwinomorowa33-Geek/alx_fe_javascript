@@ -8,6 +8,7 @@ const quotes = [
 // ---------- ADD: Web Storage keys & helpers ----------
 const LS_KEY = "dynamic_quote_generator_quotes_v1";
 const SESSION_KEY_LAST = "dynamic_quote_generator_lastViewed";
+const FILTER_KEY = "dynamic_quote_generator_selected_category"; // NEW KEY for filter
 
 function saveQuotesToLocalStorage() {
   try {
@@ -100,6 +101,9 @@ function addQuote() {
   textInput.value = "";
   categoryInput.value = "";
 
+  // Update categories dropdown if new one added
+  populateCategories();
+
   // Use innerHTML to confirm addition dynamically
   quoteDisplay.innerHTML = `
     <p style="color: green;">New quote added successfully!</p>
@@ -156,6 +160,7 @@ function importFromJsonFile(event) {
 
       quotes.push(...validItems);
       saveQuotesToLocalStorage();
+      populateCategories(); // update dropdown after import
       alert(`Imported ${validItems.length} quotes successfully!`);
     } catch (err) {
       console.error("Import failed:", err);
@@ -167,7 +172,52 @@ function importFromJsonFile(event) {
 // --------------------------------------------------------
 
 
+// ---------- ADD: CATEGORY FILTERING SYSTEM ----------
+function populateCategories() {
+  let dropdown = document.getElementById("categoryFilter");
+
+  if (!dropdown) {
+    dropdown = document.createElement("select");
+    dropdown.id = "categoryFilter";
+    document.body.insertBefore(dropdown, quoteDisplay);
+    dropdown.addEventListener("change", filterQuotes);
+  }
+
+  const categories = [...new Set(quotes.map(q => q.category))];
+  const lastSelected = localStorage.getItem(FILTER_KEY);
+
+  dropdown.innerHTML = `<option value="">All Categories</option>` + 
+    categories.map(cat => `<option value="${cat}" ${cat === lastSelected ? "selected" : ""}>${cat}</option>`).join("");
+
+  if (lastSelected) filterQuotes();
+}
+
+function filterQuotes() {
+  const dropdown = document.getElementById("categoryFilter");
+  const selected = dropdown.value;
+
+  localStorage.setItem(FILTER_KEY, selected);
+
+  let filteredQuotes = selected ? quotes.filter(q => q.category === selected) : quotes;
+
+  if (filteredQuotes.length === 0) {
+    quoteDisplay.innerHTML = `<p>No quotes found for this category.</p>`;
+    return;
+  }
+
+  const randomIndex = Math.floor(Math.random() * filteredQuotes.length);
+  const { text, category } = filteredQuotes[randomIndex];
+
+  quoteDisplay.innerHTML = `
+    <blockquote>"${text}"</blockquote>
+    <p><em>— ${category}</em></p>
+  `;
+}
+// --------------------------------------------------------
+
+
 // === Step 7: Initialize App ===
 loadQuotesFromLocalStorage();
 createAddQuoteForm();
+populateCategories();
 showRandomQuote();

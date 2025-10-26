@@ -8,6 +8,16 @@
 <body>
   <h1>Dynamic Quote Generator</h1>
 
+  <!-- === Step 1: Added Category Filter Dropdown === -->
+  <div style="margin-bottom: 10px;">
+    <label for="categoryFilter"><strong>Filter by Category:</strong></label>
+    <select id="categoryFilter" onchange="filterQuotes()">
+      <option value="">All Categories</option>
+      <!-- Categories will be populated dynamically -->
+    </select>
+  </div>
+  <!-- ============================================== -->
+
   <!-- Placeholder for dynamic quote content -->
   <div id="quoteDisplay"></div>
 
