@@ -8,7 +8,7 @@ const quotes = [
 // ---------- ADD: Web Storage keys & helpers ----------
 const LS_KEY = "dynamic_quote_generator_quotes_v1";
 const SESSION_KEY_LAST = "dynamic_quote_generator_lastViewed";
-const FILTER_KEY = "dynamic_quote_generator_selected_category"; 
+const FILTER_KEY = "dynamic_quote_generator_selected_category";
 
 // NEW global tracker for selected category
 let selectedCategory = localStorage.getItem(FILTER_KEY) || "";
@@ -48,7 +48,6 @@ function showRandomQuote() {
     return;
   }
 
-  // Filter by selectedCategory if applicable
   const filteredQuotes = selectedCategory
     ? quotes.filter(q => q.category === selectedCategory)
     : quotes;
@@ -116,6 +115,9 @@ function addQuote() {
 
   populateCategories();
   quoteDisplay.textContent = "New quote added successfully!";
+
+  // Trigger sync after adding
+  syncWithServer();
 }
 
 // === Step 6: Event Listeners ===
@@ -197,16 +199,88 @@ function populateCategories() {
 
 function filterQuotes() {
   const dropdown = document.getElementById("categoryFilter");
-  selectedCategory = dropdown.value; // ✅ track category
+  selectedCategory = dropdown.value;
   localStorage.setItem(FILTER_KEY, selectedCategory);
-
-  showRandomQuote(); // ✅ update quote display immediately
+  showRandomQuote();
 }
 // --------------------------------------------------------
 
 
-// === Step 7: Initialize App ===
+// === Step 8: SERVER SYNC & CONFLICT HANDLING SYSTEM ===
+
+// Mock API endpoint (using JSONPlaceholder-style URL)
+const SERVER_URL = "https://jsonplaceholder.typicode.com/posts";
+
+// Notification banner
+const syncBanner = document.createElement("div");
+syncBanner.style.cssText = "background:#222;color:#fff;padding:6px;text-align:center;display:none;";
+document.body.prepend(syncBanner);
+
+function showSyncMessage(msg, color = "lightgreen") {
+  syncBanner.textContent = msg;
+  syncBanner.style.background = color;
+  syncBanner.style.display = "block";
+  setTimeout(() => (syncBanner.style.display = "none"), 3000);
+}
+
+// Simulate server fetch
+async function fetchServerQuotes() {
+  try {
+    const res = await fetch(SERVER_URL);
+    const data = await res.json();
+
+    // Simulate quotes array from server
+    const serverQuotes = data.slice(0, 3).map(item => ({
+      text: item.title,
+      category: "Server"
+    }));
+
+    return serverQuotes;
+  } catch (err) {
+    console.error("Server fetch failed:", err);
+    return [];
+  }
+}
+
+// Sync local data with server
+async function syncWithServer() {
+  try {
+    const serverQuotes = await fetchServerQuotes();
+
+    if (!serverQuotes.length) {
+      console.warn("No server data fetched.");
+      return;
+    }
+
+    // Conflict resolution: Server data takes precedence
+    const combined = [...serverQuotes];
+    const serverTexts = new Set(serverQuotes.map(q => q.text));
+
+    quotes.forEach(q => {
+      if (!serverTexts.has(q.text)) combined.push(q);
+    });
+
+    quotes.length = 0;
+    combined.forEach(q => quotes.push(q));
+    saveQuotesToLocalStorage();
+
+    populateCategories();
+    showSyncMessage("✅ Synced with server (server data prioritized)");
+  } catch (err) {
+    console.error("Sync failed:", err);
+    showSyncMessage("⚠️ Sync failed", "red");
+  }
+}
+
+// Periodically sync every 30 seconds
+setInterval(syncWithServer, 30000);
+
+// --------------------------------------------------------
+
+
+// === Step 9: Initialize App ===
 loadQuotesFromLocalStorage();
 createAddQuoteForm();
 populateCategories();
 showRandomQuote();
+syncWithServer(); // Initial sync on load
