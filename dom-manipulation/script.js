@@ -41,18 +41,15 @@ const newQuoteButton = document.getElementById("newQuote");
 // === Step 3: Function to Display a Random Quote ===
 function showRandomQuote() {
   if (quotes.length === 0) {
-    quoteDisplay.innerHTML = `<p>No quotes available. Please add one!</p>`;
+    quoteDisplay.textContent = "No quotes available. Please add one!";
     return;
   }
 
   const randomIndex = Math.floor(Math.random() * quotes.length);
   const { text, category } = quotes[randomIndex];
 
-  // Use innerHTML to dynamically inject formatted quote text
-  quoteDisplay.innerHTML = `
-    <blockquote>"${text}"</blockquote>
-    <p><em>— ${category}</em></p>
-  `;
+  // Use textContent instead of innerHTML
+  quoteDisplay.textContent = `"${text}" — ${category}`;
 
   // ---------- ADD: store last viewed in sessionStorage ----------
   try {
@@ -65,18 +62,27 @@ function showRandomQuote() {
 function createAddQuoteForm() {
   const formContainer = document.createElement("div");
 
-  // Using innerHTML for structured form creation
-  formContainer.innerHTML = `
-    <input id="newQuoteText" type="text" placeholder="Enter a new quote" />
-    <input id="newQuoteCategory" type="text" placeholder="Enter quote category" />
-    <button id="addQuoteButton">Add Quote</button>
-  `;
+  // Using DOM methods instead of innerHTML
+  const textInput = document.createElement("input");
+  textInput.id = "newQuoteText";
+  textInput.type = "text";
+  textInput.placeholder = "Enter a new quote";
 
-  // Append form container dynamically
+  const categoryInput = document.createElement("input");
+  categoryInput.id = "newQuoteCategory";
+  categoryInput.type = "text";
+  categoryInput.placeholder = "Enter quote category";
+
+  const addButton = document.createElement("button");
+  addButton.id = "addQuoteButton";
+  addButton.textContent = "Add Quote";
+
+  formContainer.appendChild(textInput);
+  formContainer.appendChild(categoryInput);
+  formContainer.appendChild(addButton);
+
   document.body.appendChild(formContainer);
-
-  // Add event listener AFTER injecting the button dynamically
-  document.getElementById("addQuoteButton").addEventListener("click", addQuote);
+  addButton.addEventListener("click", addQuote);
 }
 
 // === Step 5: Function to Add a New Quote Dynamically ===
@@ -94,20 +100,15 @@ function addQuote() {
 
   quotes.push({ text: newText, category: newCategory });
 
-  // ---------- ADD: persist after adding ----------
   saveQuotesToLocalStorage();
-  // ---------------------------------------------
 
   textInput.value = "";
   categoryInput.value = "";
 
-  // Update categories dropdown if new one added
   populateCategories();
 
-  // Use innerHTML to confirm addition dynamically
-  quoteDisplay.innerHTML = `
-    <p style="color: green;">New quote added successfully!</p>
-  `;
+  // Confirmation message with textContent
+  quoteDisplay.textContent = "New quote added successfully!";
 }
 
 // === Step 6: Event Listeners ===
@@ -160,7 +161,7 @@ function importFromJsonFile(event) {
 
       quotes.push(...validItems);
       saveQuotesToLocalStorage();
-      populateCategories(); // update dropdown after import
+      populateCategories();
       alert(`Imported ${validItems.length} quotes successfully!`);
     } catch (err) {
       console.error("Import failed:", err);
@@ -201,17 +202,14 @@ function filterQuotes() {
   let filteredQuotes = selected ? quotes.filter(q => q.category === selected) : quotes;
 
   if (filteredQuotes.length === 0) {
-    quoteDisplay.innerHTML = `<p>No quotes found for this category.</p>`;
+    quoteDisplay.textContent = "No quotes found for this category.";
     return;
   }
 
   const randomIndex = Math.floor(Math.random() * filteredQuotes.length);
   const { text, category } = filteredQuotes[randomIndex];
 
-  quoteDisplay.innerHTML = `
-    <blockquote>"${text}"</blockquote>
-    <p><em>— ${category}</em></p>
-  `;
+  quoteDisplay.textContent = `"${text}" — ${category}`;
 }
 // --------------------------------------------------------
 
