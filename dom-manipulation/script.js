@@ -259,9 +259,18 @@ async function syncWithServer() {
 
 // === ADDED: syncQuotes wrapper ===
 // Tests/linters expect a function named `syncQuotes` — provide a minimal wrapper
+
+
+// ✅ New Function: syncQuotes (wrapper for syncWithServer)
 async function syncQuotes() {
-  return await syncWithServer();
+  try {
+    await syncWithServer();
+    console.log("Quotes synced with server!");
+  } catch (err) {
+    console.error("Error during syncQuotes:", err);
+  }
 }
+
 
 // === Step 10: Initialize App ===
 loadQuotesFromLocalStorage();
