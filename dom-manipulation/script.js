@@ -5,6 +5,34 @@ const quotes = [
   { text: "Don’t let yesterday take up too much of today.", category: "Inspiration" },
 ];
 
+// ---------- ADD: Web Storage keys & helpers ----------
+const LS_KEY = "dynamic_quote_generator_quotes_v1";
+const SESSION_KEY_LAST = "dynamic_quote_generator_lastViewed";
+
+function saveQuotesToLocalStorage() {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(quotes));
+  } catch (err) {
+    console.error("Failed to save quotes to localStorage:", err);
+  }
+}
+
+function loadQuotesFromLocalStorage() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return; // keep default quotes if nothing stored
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      quotes.length = 0;
+      parsed.forEach(q => quotes.push(q));
+    }
+  } catch (err) {
+    console.error("Failed to load quotes from localStorage:", err);
+  }
+}
+// ------------------------------------------------------
+
+
 // === Step 2: Reference DOM Elements ===
 const quoteDisplay = document.getElementById("quoteDisplay");
 const newQuoteButton = document.getElementById("newQuote");
@@ -24,6 +52,12 @@ function showRandomQuote() {
     <blockquote>"${text}"</blockquote>
     <p><em>— ${category}</em></p>
   `;
+
+  // ---------- ADD: store last viewed in sessionStorage ----------
+  try {
+    sessionStorage.setItem(SESSION_KEY_LAST, JSON.stringify({ index: randomIndex, quote: quotes[randomIndex] }));
+  } catch (e) { /* ignore */ }
+  // -------------------------------------------------------------
 }
 
 // === Step 4: Function to Dynamically Create Add-Quote Form ===
@@ -58,6 +92,11 @@ function addQuote() {
   }
 
   quotes.push({ text: newText, category: newCategory });
+
+  // ---------- ADD: persist after adding ----------
+  saveQuotesToLocalStorage();
+  // ---------------------------------------------
+
   textInput.value = "";
   categoryInput.value = "";
 
@@ -70,6 +109,65 @@ function addQuote() {
 // === Step 6: Event Listeners ===
 newQuoteButton.addEventListener("click", showRandomQuote);
 
+
+// ---------- ADD: JSON export/import functions ----------
+function exportToJsonFile() {
+  try {
+    const dataStr = JSON.stringify(quotes, null, 2);
+    const blob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "quotes.json";
+    document.body.appendChild(a);
+    a.click();
+
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+      a.remove();
+    }, 100);
+  } catch (err) {
+    console.error("Export failed:", err);
+    alert("Failed to export quotes.");
+  }
+}
+
+function importFromJsonFile(event) {
+  const file = event.target ? event.target.files[0] : event;
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const parsed = JSON.parse(e.target.result);
+
+      let imported = [];
+      if (Array.isArray(parsed)) imported = parsed;
+      else if (parsed && Array.isArray(parsed.quotes)) imported = parsed.quotes;
+      else throw new Error("Invalid JSON structure.");
+
+      const validItems = imported.filter(item => item && typeof item.text === "string" && typeof item.category === "string");
+
+      if (validItems.length === 0) {
+        alert("No valid quotes found in file.");
+        return;
+      }
+
+      quotes.push(...validItems);
+      saveQuotesToLocalStorage();
+      alert(`Imported ${validItems.length} quotes successfully!`);
+    } catch (err) {
+      console.error("Import failed:", err);
+      alert("Failed to import JSON file.");
+    }
+  };
+  reader.readAsText(file);
+}
+// --------------------------------------------------------
+
+
 // === Step 7: Initialize App ===
+loadQuotesFromLocalStorage();
 createAddQuoteForm();
 showRandomQuote();
