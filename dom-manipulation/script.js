@@ -5,12 +5,10 @@ const quotes = [
   { text: "Don’t let yesterday take up too much of today.", category: "Inspiration" },
 ];
 
-// ---------- ADD: Web Storage keys & helpers ----------
+// ---------- Web Storage keys & helpers ----------
 const LS_KEY = "dynamic_quote_generator_quotes_v1";
 const SESSION_KEY_LAST = "dynamic_quote_generator_lastViewed";
 const FILTER_KEY = "dynamic_quote_generator_selected_category";
-
-// NEW global tracker for selected category
 let selectedCategory = localStorage.getItem(FILTER_KEY) || "";
 
 function saveQuotesToLocalStorage() {
@@ -34,14 +32,12 @@ function loadQuotesFromLocalStorage() {
     console.error("Failed to load quotes from localStorage:", err);
   }
 }
-// ------------------------------------------------------
-
 
 // === Step 2: Reference DOM Elements ===
 const quoteDisplay = document.getElementById("quoteDisplay");
 const newQuoteButton = document.getElementById("newQuote");
 
-// === Step 3: Function to Display a Random Quote ===
+// === Step 3: Display Random Quote ===
 function showRandomQuote() {
   if (quotes.length === 0) {
     quoteDisplay.textContent = "No quotes available. Please add one!";
@@ -59,15 +55,15 @@ function showRandomQuote() {
 
   const randomIndex = Math.floor(Math.random() * filteredQuotes.length);
   const { text, category } = filteredQuotes[randomIndex];
-
   quoteDisplay.textContent = `"${text}" — ${category}`;
 
-  try {
-    sessionStorage.setItem(SESSION_KEY_LAST, JSON.stringify({ index: randomIndex, quote: filteredQuotes[randomIndex] }));
-  } catch (e) {}
+  sessionStorage.setItem(
+    SESSION_KEY_LAST,
+    JSON.stringify({ index: randomIndex, quote: filteredQuotes[randomIndex] })
+  );
 }
 
-// === Step 4: Function to Dynamically Create Add-Quote Form ===
+// === Step 4: Add Quote Form ===
 function createAddQuoteForm() {
   const formContainer = document.createElement("div");
 
@@ -85,22 +81,16 @@ function createAddQuoteForm() {
   addButton.id = "addQuoteButton";
   addButton.textContent = "Add Quote";
 
-  formContainer.appendChild(textInput);
-  formContainer.appendChild(categoryInput);
-  formContainer.appendChild(addButton);
-
+  formContainer.append(textInput, categoryInput, addButton);
   document.body.appendChild(formContainer);
 
   addButton.addEventListener("click", addQuote);
 }
 
-// === Step 5: Function to Add a New Quote Dynamically ===
+// === Step 5: Add New Quote ===
 function addQuote() {
-  const textInput = document.getElementById("newQuoteText");
-  const categoryInput = document.getElementById("newQuoteCategory");
-
-  const newText = textInput.value.trim();
-  const newCategory = categoryInput.value.trim();
+  const newText = document.getElementById("newQuoteText").value.trim();
+  const newCategory = document.getElementById("newQuoteCategory").value.trim();
 
   if (!newText || !newCategory) {
     alert("Please enter both a quote and its category.");
@@ -108,61 +98,51 @@ function addQuote() {
   }
 
   quotes.push({ text: newText, category: newCategory });
-
   saveQuotesToLocalStorage();
-  textInput.value = "";
-  categoryInput.value = "";
-
   populateCategories();
+  document.getElementById("newQuoteText").value = "";
+  document.getElementById("newQuoteCategory").value = "";
   quoteDisplay.textContent = "New quote added successfully!";
-
-  // Trigger sync after adding
   syncWithServer();
 }
 
 // === Step 6: Event Listeners ===
 newQuoteButton.addEventListener("click", showRandomQuote);
 
-
-// ---------- ADD: JSON export/import ----------
+// === Step 7: JSON Export/Import ===
 function exportToJsonFile() {
-  try {
-    const dataStr = JSON.stringify(quotes, null, 2);
-    const blob = new Blob([dataStr], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "quotes.json";
-    document.body.appendChild(a);
-    a.click();
-
-    setTimeout(() => {
-      URL.revokeObjectURL(url);
-      a.remove();
-    }, 100);
-  } catch (err) {
-    console.error("Export failed:", err);
-    alert("Failed to export quotes.");
-  }
+  const dataStr = JSON.stringify(quotes, null, 2);
+  const blob = new Blob([dataStr], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "quotes.json";
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    URL.revokeObjectURL(url);
+    a.remove();
+  }, 100);
 }
 
 function importFromJsonFile(event) {
-  const file = event.target ? event.target.files[0] : event;
+  const file = event.target.files[0];
   if (!file) return;
 
   const reader = new FileReader();
-  reader.onload = function(e) {
+  reader.onload = e => {
     try {
       const parsed = JSON.parse(e.target.result);
-      let imported = [];
-      if (Array.isArray(parsed)) imported = parsed;
-      else if (parsed && Array.isArray(parsed.quotes)) imported = parsed.quotes;
-      else throw new Error("Invalid JSON structure.");
+      const imported = Array.isArray(parsed)
+        ? parsed
+        : parsed.quotes || [];
 
-      const validItems = imported.filter(item => item && typeof item.text === "string" && typeof item.category === "string");
-      if (validItems.length === 0) {
-        alert("No valid quotes found in file.");
+      const validItems = imported.filter(
+        item => item.text && item.category
+      );
+
+      if (!validItems.length) {
+        alert("No valid quotes found.");
         return;
       }
 
@@ -171,19 +151,16 @@ function importFromJsonFile(event) {
       populateCategories();
       alert(`Imported ${validItems.length} quotes successfully!`);
     } catch (err) {
-      console.error("Import failed:", err);
       alert("Failed to import JSON file.");
+      console.error(err);
     }
   };
   reader.readAsText(file);
 }
-// --------------------------------------------------------
 
-
-// ---------- ADD: CATEGORY FILTERING SYSTEM ----------
+// === Step 8: Category Filter System ===
 function populateCategories() {
   let dropdown = document.getElementById("categoryFilter");
-
   if (!dropdown) {
     dropdown = document.createElement("select");
     dropdown.id = "categoryFilter";
@@ -192,28 +169,29 @@ function populateCategories() {
   }
 
   const categories = [...new Set(quotes.map(q => q.category))];
-
-  dropdown.innerHTML = `<option value="">All Categories</option>` +
-    categories.map(cat => `<option value="${cat}" ${cat === selectedCategory ? "selected" : ""}>${cat}</option>`).join("");
+  dropdown.innerHTML =
+    `<option value="">All Categories</option>` +
+    categories
+      .map(
+        cat =>
+          `<option value="${cat}" ${
+            cat === selectedCategory ? "selected" : ""
+          }>${cat}</option>`
+      )
+      .join("");
 }
 
 function filterQuotes() {
-  const dropdown = document.getElementById("categoryFilter");
-  selectedCategory = dropdown.value;
+  selectedCategory = document.getElementById("categoryFilter").value;
   localStorage.setItem(FILTER_KEY, selectedCategory);
   showRandomQuote();
 }
-// --------------------------------------------------------
 
-
-// === Step 8: SERVER SYNC & CONFLICT HANDLING SYSTEM ===
-
-// Mock API endpoint (using JSONPlaceholder-style URL)
+// === Step 9: SERVER SYNC & FETCH ===
 const SERVER_URL = "https://jsonplaceholder.typicode.com/posts";
-
-// Notification banner
 const syncBanner = document.createElement("div");
-syncBanner.style.cssText = "background:#222;color:#fff;padding:6px;text-align:center;display:none;";
+syncBanner.style.cssText =
+  "background:#222;color:#fff;padding:6px;text-align:center;display:none;";
 document.body.prepend(syncBanner);
 
 function showSyncMessage(msg, color = "lightgreen") {
@@ -223,39 +201,31 @@ function showSyncMessage(msg, color = "lightgreen") {
   setTimeout(() => (syncBanner.style.display = "none"), 3000);
 }
 
-// Simulate server fetch
-async function fetchServerQuotes() {
+// ✅ Required Function: fetchQuotesFromServer()
+async function fetchQuotesFromServer() {
   try {
-    const res = await fetch(SERVER_URL);
-    const data = await res.json();
-
-    // Simulate quotes array from server
-    const serverQuotes = data.slice(0, 3).map(item => ({
-      text: item.title,
-      category: "Server"
-    }));
-
-    return serverQuotes;
+    const response = await fetch("https://type.fit/api/quotes");
+    if (!response.ok) throw new Error("Failed to fetch quotes");
+    const data = await response.json();
+    console.log("Quotes fetched successfully!");
+    return data;
   } catch (err) {
-    console.error("Server fetch failed:", err);
+    console.error("Error fetching quotes:", err);
     return [];
   }
 }
 
-// Sync local data with server
 async function syncWithServer() {
   try {
-    const serverQuotes = await fetchServerQuotes();
-
+    const serverQuotes = await fetchQuotesFromServer();
     if (!serverQuotes.length) {
-      console.warn("No server data fetched.");
+      showSyncMessage("⚠️ No server data fetched", "orange");
       return;
     }
 
-    // Conflict resolution: Server data takes precedence
-    const combined = [...serverQuotes];
+    // Prioritize server data
     const serverTexts = new Set(serverQuotes.map(q => q.text));
-
+    const combined = [...serverQuotes];
     quotes.forEach(q => {
       if (!serverTexts.has(q.text)) combined.push(q);
     });
@@ -263,24 +233,18 @@ async function syncWithServer() {
     quotes.length = 0;
     combined.forEach(q => quotes.push(q));
     saveQuotesToLocalStorage();
-
     populateCategories();
-    showSyncMessage("✅ Synced with server (server data prioritized)");
+    showSyncMessage("✅ Synced with server");
   } catch (err) {
     console.error("Sync failed:", err);
     showSyncMessage("⚠️ Sync failed", "red");
   }
 }
 
-// Periodically sync every 30 seconds
-setInterval(syncWithServer, 30000);
-
-// --------------------------------------------------------
-
-
-// === Step 9: Initialize App ===
+// === Step 10: Initialize App ===
 loadQuotesFromLocalStorage();
 createAddQuoteForm();
 populateCategories();
 showRandomQuote();
-syncWithServer(); // Initial sync on load
+syncWithServer();
+setInterval(syncWithServer, 30000);
