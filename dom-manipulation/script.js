@@ -12,40 +12,39 @@ const newQuoteButton = document.getElementById("newQuote");
 // === Step 3: Function to Display a Random Quote ===
 function showRandomQuote() {
   if (quotes.length === 0) {
-    quoteDisplay.textContent = "No quotes available. Please add one!";
+    quoteDisplay.innerHTML = `<p>No quotes available. Please add one!</p>`;
     return;
   }
+
   const randomIndex = Math.floor(Math.random() * quotes.length);
   const { text, category } = quotes[randomIndex];
-  quoteDisplay.textContent = `"${text}" — ${category}`;
+
+  // Use innerHTML to dynamically inject formatted quote text
+  quoteDisplay.innerHTML = `
+    <blockquote>"${text}"</blockquote>
+    <p><em>— ${category}</em></p>
+  `;
 }
 
-// === Step 4: Function to Create the 'Add Quote' Form Dynamically ===
+// === Step 4: Function to Dynamically Create Add-Quote Form ===
 function createAddQuoteForm() {
   const formContainer = document.createElement("div");
-  
-  const textInput = document.createElement("input");
-  textInput.type = "text";
-  textInput.id = "newQuoteText";
-  textInput.placeholder = "Enter a new quote";
 
-  const categoryInput = document.createElement("input");
-  categoryInput.type = "text";
-  categoryInput.id = "newQuoteCategory";
-  categoryInput.placeholder = "Enter quote category";
+  // Using innerHTML for structured form creation
+  formContainer.innerHTML = `
+    <input id="newQuoteText" type="text" placeholder="Enter a new quote" />
+    <input id="newQuoteCategory" type="text" placeholder="Enter quote category" />
+    <button id="addQuoteButton">Add Quote</button>
+  `;
 
-  const addButton = document.createElement("button");
-  addButton.textContent = "Add Quote";
-  addButton.addEventListener("click", addQuote);
-
-  formContainer.appendChild(textInput);
-  formContainer.appendChild(categoryInput);
-  formContainer.appendChild(addButton);
-
+  // Append form container dynamically
   document.body.appendChild(formContainer);
+
+  // Add event listener AFTER injecting the button dynamically
+  document.getElementById("addQuoteButton").addEventListener("click", addQuote);
 }
 
-// === Step 5: Add Quote Function ===
+// === Step 5: Function to Add a New Quote Dynamically ===
 function addQuote() {
   const textInput = document.getElementById("newQuoteText");
   const categoryInput = document.getElementById("newQuoteCategory");
@@ -61,12 +60,16 @@ function addQuote() {
   quotes.push({ text: newText, category: newCategory });
   textInput.value = "";
   categoryInput.value = "";
-  alert("New quote added successfully!");
+
+  // Use innerHTML to confirm addition dynamically
+  quoteDisplay.innerHTML = `
+    <p style="color: green;">New quote added successfully!</p>
+  `;
 }
 
-// === Step 6: Attach Event Listeners ===
+// === Step 6: Event Listeners ===
 newQuoteButton.addEventListener("click", showRandomQuote);
 
-// === Step 7: Initialize Dynamic Elements ===
-createAddQuoteForm(); // create the add-quote form dynamically
-showRandomQuote();    // show an initial quote
+// === Step 7: Initialize App ===
+createAddQuoteForm();
+showRandomQuote();
