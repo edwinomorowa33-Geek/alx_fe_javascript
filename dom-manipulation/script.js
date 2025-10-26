@@ -8,7 +8,10 @@ const quotes = [
 // ---------- ADD: Web Storage keys & helpers ----------
 const LS_KEY = "dynamic_quote_generator_quotes_v1";
 const SESSION_KEY_LAST = "dynamic_quote_generator_lastViewed";
-const FILTER_KEY = "dynamic_quote_generator_selected_category"; // NEW KEY for filter
+const FILTER_KEY = "dynamic_quote_generator_selected_category"; 
+
+// NEW global tracker for selected category
+let selectedCategory = localStorage.getItem(FILTER_KEY) || "";
 
 function saveQuotesToLocalStorage() {
   try {
@@ -21,7 +24,7 @@ function saveQuotesToLocalStorage() {
 function loadQuotesFromLocalStorage() {
   try {
     const raw = localStorage.getItem(LS_KEY);
-    if (!raw) return; // keep default quotes if nothing stored
+    if (!raw) return;
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
       quotes.length = 0;
@@ -45,24 +48,30 @@ function showRandomQuote() {
     return;
   }
 
-  const randomIndex = Math.floor(Math.random() * quotes.length);
-  const { text, category } = quotes[randomIndex];
+  // Filter by selectedCategory if applicable
+  const filteredQuotes = selectedCategory
+    ? quotes.filter(q => q.category === selectedCategory)
+    : quotes;
 
-  // Use textContent instead of innerHTML
+  if (filteredQuotes.length === 0) {
+    quoteDisplay.textContent = `No quotes found for category: ${selectedCategory}`;
+    return;
+  }
+
+  const randomIndex = Math.floor(Math.random() * filteredQuotes.length);
+  const { text, category } = filteredQuotes[randomIndex];
+
   quoteDisplay.textContent = `"${text}" — ${category}`;
 
-  // ---------- ADD: store last viewed in sessionStorage ----------
   try {
-    sessionStorage.setItem(SESSION_KEY_LAST, JSON.stringify({ index: randomIndex, quote: quotes[randomIndex] }));
-  } catch (e) { /* ignore */ }
-  // -------------------------------------------------------------
+    sessionStorage.setItem(SESSION_KEY_LAST, JSON.stringify({ index: randomIndex, quote: filteredQuotes[randomIndex] }));
+  } catch (e) {}
 }
 
 // === Step 4: Function to Dynamically Create Add-Quote Form ===
 function createAddQuoteForm() {
   const formContainer = document.createElement("div");
 
-  // Using DOM methods instead of innerHTML
   const textInput = document.createElement("input");
   textInput.id = "newQuoteText";
   textInput.type = "text";
@@ -82,6 +91,7 @@ function createAddQuoteForm() {
   formContainer.appendChild(addButton);
 
   document.body.appendChild(formContainer);
+
   addButton.addEventListener("click", addQuote);
 }
 
@@ -101,13 +111,10 @@ function addQuote() {
   quotes.push({ text: newText, category: newCategory });
 
   saveQuotesToLocalStorage();
-
   textInput.value = "";
   categoryInput.value = "";
 
   populateCategories();
-
-  // Confirmation message with textContent
   quoteDisplay.textContent = "New quote added successfully!";
 }
 
@@ -115,7 +122,7 @@ function addQuote() {
 newQuoteButton.addEventListener("click", showRandomQuote);
 
 
-// ---------- ADD: JSON export/import functions ----------
+// ---------- ADD: JSON export/import ----------
 function exportToJsonFile() {
   try {
     const dataStr = JSON.stringify(quotes, null, 2);
@@ -146,14 +153,12 @@ function importFromJsonFile(event) {
   reader.onload = function(e) {
     try {
       const parsed = JSON.parse(e.target.result);
-
       let imported = [];
       if (Array.isArray(parsed)) imported = parsed;
       else if (parsed && Array.isArray(parsed.quotes)) imported = parsed.quotes;
       else throw new Error("Invalid JSON structure.");
 
       const validItems = imported.filter(item => item && typeof item.text === "string" && typeof item.category === "string");
-
       if (validItems.length === 0) {
         alert("No valid quotes found in file.");
         return;
@@ -185,31 +190,17 @@ function populateCategories() {
   }
 
   const categories = [...new Set(quotes.map(q => q.category))];
-  const lastSelected = localStorage.getItem(FILTER_KEY);
 
-  dropdown.innerHTML = `<option value="">All Categories</option>` + 
-    categories.map(cat => `<option value="${cat}" ${cat === lastSelected ? "selected" : ""}>${cat}</option>`).join("");
-
-  if (lastSelected) filterQuotes();
+  dropdown.innerHTML = `<option value="">All Categories</option>` +
+    categories.map(cat => `<option value="${cat}" ${cat === selectedCategory ? "selected" : ""}>${cat}</option>`).join("");
 }
 
 function filterQuotes() {
   const dropdown = document.getElementById("categoryFilter");
-  const selected = dropdown.value;
+  selectedCategory = dropdown.value; // ✅ track category
+  localStorage.setItem(FILTER_KEY, selectedCategory);
 
-  localStorage.setItem(FILTER_KEY, selected);
-
-  let filteredQuotes = selected ? quotes.filter(q => q.category === selected) : quotes;
-
-  if (filteredQuotes.length === 0) {
-    quoteDisplay.textContent = "No quotes found for this category.";
-    return;
-  }
-
-  const randomIndex = Math.floor(Math.random() * filteredQuotes.length);
-  const { text, category } = filteredQuotes[randomIndex];
-
-  quoteDisplay.textContent = `"${text}" — ${category}`;
+  showRandomQuote(); // ✅ update quote display immediately
 }
 // --------------------------------------------------------
 
