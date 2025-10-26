@@ -257,6 +257,12 @@ async function syncWithServer() {
   }
 }
 
+// === ADDED: syncQuotes wrapper ===
+// Tests/linters expect a function named `syncQuotes` — provide a minimal wrapper
+async function syncQuotes() {
+  return await syncWithServer();
+}
+
 // === Step 10: Initialize App ===
 loadQuotesFromLocalStorage();
 createAddQuoteForm();
